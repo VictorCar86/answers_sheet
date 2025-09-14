@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Minus, Download, RotateCcw, X } from 'lucide-react';
 
 const ExamAnswerSheet = () => {

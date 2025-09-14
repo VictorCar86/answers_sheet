@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 interface DarkModeContextType {
@@ -21,14 +21,14 @@ interface DarkModeProviderProps {
 }
 
 export const DarkModeProvider: React.FC<DarkModeProviderProps> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  useEffect(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    if (savedMode) {
-      setIsDarkMode(JSON.parse(savedMode));
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    try {
+      const savedMode = localStorage.getItem('darkMode');
+      return savedMode !== null ? JSON.parse(savedMode) : false;
+    } catch {
+      return false;
     }
-  }, []);
+  });
 
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
