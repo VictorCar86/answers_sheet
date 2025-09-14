@@ -158,7 +158,7 @@ const ExamAnswerSheet = () => {
             setImportError('Campo "correcta" inválido: debe ser "Sí", "No" o "No evaluada".');
             return;
           }
-          if (!('correcta_respuesta' in item) || typeof item.correcta_respuesta !== 'string' || item.correcta_respuesta.length > 1) {
+          if ('correcta_respuesta' in item && (typeof item.correcta_respuesta !== 'string' || item.correcta_respuesta.length > 1)) {
             setImportError('Campo "correcta_respuesta" inválido: debe ser una cadena de un carácter.');
             return;
           }
@@ -306,12 +306,15 @@ const ExamAnswerSheet = () => {
   const exportAnswers = () => {
     const results = [];
     for (let i = 1; i <= numQuestions; i++) {
-      results.push({
+      const obj = {
         pregunta: i,
         respuesta: answers[i] || 'Sin respuesta',
-        correcta: correctness[i] === true ? 'Sí' : correctness[i] === false ? 'No' : 'No evaluada',
-        correcta_respuesta: correctAnswers[i] || ''
-      });
+        correcta: correctness[i] === true ? 'Sí' : correctness[i] === false ? 'No' : 'No evaluada'
+      };
+      if (correctAnswers[i]) {
+        obj.correcta_respuesta = correctAnswers[i];
+      }
+      results.push(obj);
     }
 
     const dataStr = JSON.stringify(results, null, 2);
