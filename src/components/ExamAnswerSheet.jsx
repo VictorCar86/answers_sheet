@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Download, RotateCcw, X, Upload } from 'lucide-react';
+import { Plus, Minus, Download, RotateCcw, X, Upload, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 
 const ExamAnswerSheet = () => {
   const [numQuestions, setNumQuestions] = useState(20);
@@ -383,7 +383,7 @@ const ExamAnswerSheet = () => {
           </select>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-col md:flex-row">
           <button
             onClick={clearAllAnswers}
             className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors flex items-center gap-2"
@@ -458,10 +458,20 @@ const ExamAnswerSheet = () => {
                   : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:border-blue-300 dark:hover:border-blue-400'
               }`}
             >
-              <div className="text-center mb-3">
+              <div className="text-center mb-3 relative">
                 <span className="inline-block w-8 h-8 bg-blue-600 dark:bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
                   {questionNum}
                 </span>
+                {selectedAnswer && (
+                  <button
+                    onClick={() => clearIndividualAnswer(questionNum)}
+                    className="absolute top-0 right-0 p-1 rounded-full border border-red-400 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/30 transition-colors"
+                    title="Limpiar respuesta"
+                    aria-label="Limpiar respuesta seleccionada"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
 
               <div className="flex justify-center gap-2 flex-wrap mb-3">
@@ -481,83 +491,71 @@ const ExamAnswerSheet = () => {
               </div>
 
               {selectedAnswer && (
-                <div className="space-y-2">
-                  <div className="text-center flex items-center justify-center gap-2">
-                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                      Respuesta: {selectedAnswer}
-                    </span>
+                <div className="space-y-3 transition-all duration-300 ease-in-out">
+                  {/* Correctness Evaluation with Custom Buttons */}
+                  <div className="flex justify-center items-center gap-2">
                     <button
-                      onClick={() => clearIndividualAnswer(questionNum)}
-                      className="p-1 rounded-full bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-800/30 transition-colors"
-                      title="Limpiar respuesta"
+                      onClick={() => handleCorrectnessChange(questionNum, true)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all duration-200 ${
+                        isCorrect === true
+                          ? 'bg-green-500 text-white shadow-md'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-green-100 dark:hover:bg-green-900/20'
+                      }`}
+                      aria-label="Marcar como correcta"
                     >
-                      <X size={12} />
+                      <CheckCircle size={16} />
+                      Correcta
                     </button>
+
+                    <button
+                      onClick={() => handleCorrectnessChange(questionNum, false)}
+                      className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all duration-200 ${
+                        isCorrect === false
+                          ? 'bg-red-500 text-white shadow-md'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-red-100 dark:hover:bg-red-900/20'
+                      }`}
+                      aria-label="Marcar como incorrecta"
+                    >
+                      <XCircle size={16} />
+                      Incorrecta
+                    </button>
+
+                    {/* Clear Evaluation Button */}
+                    {(isCorrect === true || isCorrect === false) && (
+                      <button
+                        onClick={() => clearIndividualCorrectness(questionNum)}
+                        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        title="Limpiar evaluación"
+                        aria-label="Limpiar evaluación de corrección"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
 
-                  {correctAnswer && selectedAnswer !== correctAnswer && (
-                    <div className="text-center mt-1">
-                      <span className="text-xs font-medium text-green-600 dark:text-green-400" aria-label={`Respuesta correcta: ${correctAnswer}`}>
-                        Respuesta Correcta: {correctAnswer}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Radio buttons para marcar si es correcta o incorrecta */}
-                  <div className="flex justify-center gap-4 text-xs">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`correctness-${questionNum}`}
-                        value="correct"
-                        checked={isCorrect === true}
-                        onChange={() => handleCorrectnessChange(questionNum, true)}
-                        className="text-green-600 dark:text-green-400 focus:ring-green-500"
-                      />
-                      <span className="text-green-600 dark:text-green-400 font-medium">✓ Correcta</span>
-                    </label>
-
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="radio"
-                        name={`correctness-${questionNum}`}
-                        value="incorrect"
-                        checked={isCorrect === false}
-                        onChange={() => handleCorrectnessChange(questionNum, false)}
-                        className="text-red-600 dark:text-red-400 focus:ring-red-500"
-                      />
-                      <span className="text-red-600 dark:text-red-400 font-medium">✗ Incorrecta</span>
-                    </label>
-                  </div>
-
+                  {/* Correct Answer Input for Incorrect Answers - Made Prominent */}
                   {isCorrect === false && (
-                    <div className="text-center mt-2">
-                      <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Respuesta Correcta:</label>
+                    <div className="text-center">
+                      <label className="block text-md font-bold text-gray-800 dark:text-gray-100 mb-2" htmlFor={`correct-answer-${questionNum}`}>
+                        Respuesta Correcta:
+                      </label>
                       <input
+                        id={`correct-answer-${questionNum}`}
                         type="text"
                         value={correctAnswer || ''}
                         onChange={(e) => {
-                          const value = e.target.value.toUpperCase().slice(0,1);
+                          const value = e.target.value.toUpperCase().slice(0, 1);
                           setCorrectAnswers(prev => ({ ...prev, [questionNum]: value }));
                         }}
-                        className="px-2 py-1 text-xs border rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
-                        placeholder="A"
+                        className={`w-16 p-1 text-xl font-bold text-center border-2 rounded transition-colors ${
+                          correctAnswer
+                            ? 'bg-green-100 dark:bg-green-900/20 border-green-500 text-green-800 dark:text-green-100'
+                            : 'bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100'
+                        } focus:outline-none focus:ring-2 focus:ring-green-500`}
+                        placeholder="?"
                         maxLength={1}
+                        aria-label="Ingresar respuesta correcta"
                       />
-                    </div>
-                  )}
-
-                  {/* Botón para limpiar evaluación de correctness */}
-                  {(isCorrect === true || isCorrect === false) && (
-                    <div className="text-center">
-                      <button
-                        onClick={() => clearIndividualCorrectness(questionNum)}
-                        className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center gap-1 mx-auto"
-                        title="Limpiar evaluación"
-                      >
-                        <X size={10} />
-                        Limpiar evaluación
-                      </button>
                     </div>
                   )}
                 </div>
