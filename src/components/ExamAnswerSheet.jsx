@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Minus, Download, RotateCcw, X } from 'lucide-react';
+import { Plus, Minus, Download, RotateCcw, X, Upload } from 'lucide-react';
 
 const ExamAnswerSheet = () => {
   const [numQuestions, setNumQuestions] = useState(20);
   const [answers, setAnswers] = useState({});
   const [correctness, setCorrectness] = useState({});
   const [optionsPerQuestion, setOptionsPerQuestion] = useState(4);
+  const [importError, setImportError] = useState('');
   const hasHydrated = useRef(false);
+  const fileInputRef = useRef(null);
 
   // Función para validar datos del localStorage
   const validateLocalStorageData = (data, type) => {
@@ -96,6 +98,93 @@ const ExamAnswerSheet = () => {
   useEffect(() => {
     hasHydrated.current = true;
   }, []);
+
+  // Función para manejar el clic en el botón de importar
+  const handleImportClick = () => {
+    fileInputRef.current.click();
+  };
+
+  // Función para manejar la selección de archivo
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validar tamaño del archivo (máximo 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setImportError('El archivo es demasiado grande. Máximo 10MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        // Validar que sea un array
+        if (!Array.isArray(data)) {
+          setImportError('El archivo no contiene un array válido.');
+          return;
+        }
+
+        // Validar estructura de cada elemento
+        for (const item of data) {
+          if (typeof item !== 'object' || item === null) {
+            setImportError('Estructura inválida: cada elemento debe ser un objeto.');
+            return;
+          }
+          if (!('pregunta' in item) || typeof item.pregunta !== 'number' || item.pregunta <= 0) {
+            setImportError('Campo "pregunta" inválido: debe ser un número positivo.');
+            return;
+          }
+          if (!('respuesta' in item) || typeof item.respuesta !== 'string') {
+            setImportError('Campo "respuesta" inválido: debe ser una cadena de texto.');
+            return;
+          }
+          if (!('correcta' in item) || typeof item.correcta !== 'string' || !['Sí', 'No', 'No evaluada'].includes(item.correcta)) {
+            setImportError('Campo "correcta" inválido: debe ser "Sí", "No" o "No evaluada".');
+            return;
+          }
+        }
+
+        // Confirmar sobrescritura si hay datos existentes
+        if (Object.keys(answers).length > 0 || Object.keys(correctness).length > 0) {
+          if (!window.confirm('¿Estás seguro de que quieres sobrescribir los datos existentes?')) {
+            return;
+          }
+        }
+
+        // Actualizar estado con los datos importados
+        const newAnswers = {};
+        const newCorrectness = {};
+        let maxQuestion = numQuestions;
+
+        for (const item of data) {
+          newAnswers[item.pregunta] = item.respuesta;
+          if (item.correcta === 'Sí') {
+            newCorrectness[item.pregunta] = true;
+          } else if (item.correcta === 'No') {
+            newCorrectness[item.pregunta] = false;
+          }
+          if (item.pregunta > maxQuestion) {
+            maxQuestion = item.pregunta;
+          }
+        }
+
+        setAnswers(newAnswers);
+        setCorrectness(newCorrectness);
+        if (maxQuestion > numQuestions) {
+          setNumQuestions(maxQuestion);
+        }
+        setImportError('');
+      } catch (error) {
+        setImportError('Error al parsear el JSON: ' + error.message);
+      }
+    };
+    reader.onerror = () => {
+      setImportError('Error al leer el archivo.');
+    };
+    reader.readAsText(file);
+  };
 
   // Generar las opciones de respuesta (A, B, C, D, E, etc.)
   const generateOptions = (numOptions) => {
@@ -269,8 +358,31 @@ const ExamAnswerSheet = () => {
             <Download size={16} />
             Exportar
           </button>
+          <button
+            onClick={handleImportClick}
+            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors flex items-center gap-2"
+          >
+            <Upload size={16} />
+            Importar
+          </button>
         </div>
       </div>
+
+      {/* Input oculto para seleccionar archivo */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept=".json"
+        style={{ display: 'none' }}
+      />
+
+      {/* Mensaje de error de importación */}
+      {importError && (
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 rounded">
+          {importError}
+        </div>
+      )}
 
       {/* Contador de respuestas */}
       <div className="mb-4 text-center">
