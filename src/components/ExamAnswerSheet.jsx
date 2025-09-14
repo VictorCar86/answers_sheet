@@ -5,6 +5,7 @@ const ExamAnswerSheet = () => {
   const [numQuestions, setNumQuestions] = useState(20);
   const [answers, setAnswers] = useState({});
   const [correctness, setCorrectness] = useState({});
+  const [correctAnswers, setCorrectAnswers] = useState({});
   const [optionsPerQuestion, setOptionsPerQuestion] = useState(4);
   const [importError, setImportError] = useState('');
   const hasHydrated = useRef(false);
@@ -36,6 +37,7 @@ const ExamAnswerSheet = () => {
   useEffect(() => {
     const savedAnswers = localStorage.getItem('examAnswers');
     const savedCorrectness = localStorage.getItem('examCorrectness');
+    const savedCorrectAnswers = localStorage.getItem('examCorrectAnswers');
     const savedNumQuestions = localStorage.getItem('examNumQuestions');
     const savedOptionsPerQuestion = localStorage.getItem('examOptionsPerQuestion');
 
@@ -49,6 +51,12 @@ const ExamAnswerSheet = () => {
     const validCorrectness = validateLocalStorageData(savedCorrectness, 'correctness');
     if (validCorrectness) {
       setCorrectness(validCorrectness);
+    }
+
+    // Validar y cargar respuestas correctas
+    const validCorrectAnswers = validateLocalStorageData(savedCorrectAnswers, 'correctness');
+    if (validCorrectAnswers) {
+      setCorrectAnswers(validCorrectAnswers);
     }
 
     // Validar y cargar número de preguntas
@@ -81,6 +89,12 @@ const ExamAnswerSheet = () => {
     if (!hasHydrated.current) return;
     localStorage.setItem('examCorrectness', JSON.stringify(correctness));
   }, [correctness]);
+
+  // Guardar respuestas correctas en localStorage cuando cambien
+  useEffect(() => {
+    if (!hasHydrated.current) return;
+    localStorage.setItem('examCorrectAnswers', JSON.stringify(correctAnswers));
+  }, [correctAnswers]);
 
   // Guardar número de preguntas en localStorage cuando cambie
   useEffect(() => {
@@ -144,10 +158,14 @@ const ExamAnswerSheet = () => {
             setImportError('Campo "correcta" inválido: debe ser "Sí", "No" o "No evaluada".');
             return;
           }
+          if (!('correcta_respuesta' in item) || typeof item.correcta_respuesta !== 'string' || item.correcta_respuesta.length > 1) {
+            setImportError('Campo "correcta_respuesta" inválido: debe ser una cadena de un carácter.');
+            return;
+          }
         }
 
         // Confirmar sobrescritura si hay datos existentes
-        if (Object.keys(answers).length > 0 || Object.keys(correctness).length > 0) {
+        if (Object.keys(answers).length > 0 || Object.keys(correctness).length > 0 || Object.keys(correctAnswers).length > 0) {
           if (!window.confirm('¿Estás seguro de que quieres sobrescribir los datos existentes?')) {
             return;
           }
@@ -156,6 +174,7 @@ const ExamAnswerSheet = () => {
         // Actualizar estado con los datos importados
         const newAnswers = {};
         const newCorrectness = {};
+        const newCorrectAnswers = {};
         let maxQuestion = numQuestions;
 
         for (const item of data) {
@@ -165,6 +184,9 @@ const ExamAnswerSheet = () => {
           } else if (item.correcta === 'No') {
             newCorrectness[item.pregunta] = false;
           }
+          if (item.correcta_respuesta) {
+            newCorrectAnswers[item.pregunta] = item.correcta_respuesta.toUpperCase();
+          }
           if (item.pregunta > maxQuestion) {
             maxQuestion = item.pregunta;
           }
@@ -172,6 +194,7 @@ const ExamAnswerSheet = () => {
 
         setAnswers(newAnswers);
         setCorrectness(newCorrectness);
+        setCorrectAnswers(newCorrectAnswers);
         if (maxQuestion > numQuestions) {
           setNumQuestions(maxQuestion);
         }
@@ -225,6 +248,11 @@ const ExamAnswerSheet = () => {
       delete newCorrectness[questionNum];
       return newCorrectness;
     });
+    setCorrectAnswers(prev => {
+      const newCorrect = { ...prev };
+      delete newCorrect[questionNum];
+      return newCorrect;
+    });
   };
 
   // Aumentar número de preguntas
@@ -252,6 +280,14 @@ const ExamAnswerSheet = () => {
         }
         return newCorrectness;
       });
+      // Limpiar respuestas correctas de preguntas eliminadas
+      setCorrectAnswers(prev => {
+        const newCorrect = { ...prev };
+        for (let i = numQuestions - 4; i <= numQuestions; i++) {
+          delete newCorrect[i];
+        }
+        return newCorrect;
+      });
     }
   };
 
@@ -259,9 +295,11 @@ const ExamAnswerSheet = () => {
   const clearAllAnswers = () => {
     setAnswers({});
     setCorrectness({});
+    setCorrectAnswers({});
     // Limpiar también el localStorage
     localStorage.removeItem('examAnswers');
     localStorage.removeItem('examCorrectness');
+    localStorage.removeItem('examCorrectAnswers');
   };
 
   // Exportar respuestas
@@ -271,7 +309,8 @@ const ExamAnswerSheet = () => {
       results.push({
         pregunta: i,
         respuesta: answers[i] || 'Sin respuesta',
-        correcta: correctness[i] === true ? 'Sí' : correctness[i] === false ? 'No' : 'No evaluada'
+        correcta: correctness[i] === true ? 'Sí' : correctness[i] === false ? 'No' : 'No evaluada',
+        correcta_respuesta: correctAnswers[i] || ''
       });
     }
 
@@ -333,6 +372,7 @@ const ExamAnswerSheet = () => {
               setOptionsPerQuestion(Number(e.target.value));
               setAnswers({});
               setCorrectness({});
+              setCorrectAnswers({});
             }}
             className="px-3 py-1 border rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -403,6 +443,7 @@ const ExamAnswerSheet = () => {
           const questionNum = i + 1;
           const selectedAnswer = answers[questionNum];
           const isCorrect = correctness[questionNum];
+          const correctAnswer = correctAnswers[questionNum];
 
           return (
             <div
@@ -454,6 +495,14 @@ const ExamAnswerSheet = () => {
                     </button>
                   </div>
 
+                  {correctAnswer && selectedAnswer !== correctAnswer && (
+                    <div className="text-center mt-1">
+                      <span className="text-xs font-medium text-green-600 dark:text-green-400" aria-label={`Respuesta correcta: ${correctAnswer}`}>
+                        Respuesta Correcta: {correctAnswer}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Radio buttons para marcar si es correcta o incorrecta */}
                   <div className="flex justify-center gap-4 text-xs">
                     <label className="flex items-center gap-1 cursor-pointer">
@@ -480,6 +529,23 @@ const ExamAnswerSheet = () => {
                       <span className="text-red-600 dark:text-red-400 font-medium">✗ Incorrecta</span>
                     </label>
                   </div>
+
+                  {isCorrect === false && (
+                    <div className="text-center mt-2">
+                      <label className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Respuesta Correcta:</label>
+                      <input
+                        type="text"
+                        value={correctAnswer || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase().slice(0,1);
+                          setCorrectAnswers(prev => ({ ...prev, [questionNum]: value }));
+                        }}
+                        className="px-2 py-1 text-xs border rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-green-500"
+                        placeholder="A"
+                        maxLength={1}
+                      />
+                    </div>
+                  )}
 
                   {/* Botón para limpiar evaluación de correctness */}
                   {(isCorrect === true || isCorrect === false) && (
