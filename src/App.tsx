@@ -1,4 +1,3 @@
-import React from 'react';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 import DarkModeToggle from './components/DarkModeToggle';
 import ExamAnswerSheet from './components/ExamAnswerSheet';
